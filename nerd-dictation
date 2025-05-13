@@ -1295,6 +1295,7 @@ def main_begin(
     Initialize audio recording, then full text to speech conversion can take place.
 
     This is terminated by the ``end`` or ``cancel`` actions.
+    If dictation is already active, this function will end it, acting as a toggle switch.
     """
 
     # Find language model in:
@@ -1309,6 +1310,29 @@ def main_begin(
     #
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
+
+    # Check if dictation is already active
+    if os.path.exists(path_to_cookie):
+        try:
+            with open(path_to_cookie, "r", encoding="utf-8") as fh:
+                pid_str = fh.read().strip()
+                try:
+                    pid = int(pid_str)
+                    # Check if the process is still running
+                    try:
+                        os.kill(pid, 0)  # Signal 0 is used to check if process exists
+                        # Process exists, so dictation is active. Call main_end and return.
+                        main_end(path_to_cookie=path_to_cookie)
+                        return
+                    except OSError:
+                        # Process doesn't exist, so dictation is not active
+                        pass
+                except ValueError:
+                    # Invalid PID, so dictation is not active
+                    pass
+        except Exception:
+            # Any error means we should proceed with normal begin functionality
+            pass
 
     is_run_on = False
     if punctuate_from_previous_timeout > 0.0:
@@ -1538,10 +1562,13 @@ def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
 def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
     subparse = subparsers.add_parser(
         "begin",
-        help="Begin dictation.",
+        help="Begin dictation or end if already active (toggle).",
         description=(
             "This creates the directory used to store internal data, "
-            "so other commands such as sync can be performed."
+            "so other commands such as sync can be performed.\n"
+            "\n"
+            "If dictation is already active, this command will end it, "
+            "acting as a toggle switch."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
