@@ -31,6 +31,10 @@ from types import (
     ModuleType,
 )
 
+import pygame
+
+from sound.sound import play_start_sound, play_end_sound
+
 TEMP_COOKIE_NAME = "nerd-dictation.cookie"
 
 USER_CONFIG_DIR = "nerd-dictation"
@@ -1356,6 +1360,9 @@ def main_begin(
         sys.stderr.write("Cookie removed after right after creation (unlikely but respect the request)\n")
         return
 
+    # play begin sound
+    play_start_sound()
+
     #
     # Start recording the output file.
     #
@@ -1497,6 +1504,8 @@ def main_end(
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
 
+    play_end_sound(wait=True)
+    
     # Resume (does nothing if not suspended), so suspending doesn't prevent the cancel operation.
     main_suspend(path_to_cookie=path_to_cookie, suspend=False, verbose=0)
 
@@ -1996,6 +2005,8 @@ def argparse_create() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> None:
+    pygame.init()
+    pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=2048)
     parser = argparse_create()
     args = parser.parse_args(argv)
     # Call sub-parser callback.
